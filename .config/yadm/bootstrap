@@ -144,6 +144,18 @@ if [ ! -d "$HOME/.tmux/plugins/tpm" ]; then
     git clone https://github.com/tmux-plugins/tpm "$HOME/.tmux/plugins/tpm"
 fi
 
+# ---- bellman (agent work-graph orchestrator) ----
+if ! have bellman; then
+    echo "--- bellman ---"
+    uv tool install "bellman @ git+https://github.com/evil-mind-evil-sword/workshop.git#subdirectory=core/tiny/tools/bellman"
+fi
+
+# ---- smg (semantic graph for architecture) ----
+if ! have smg; then
+    echo "--- smg ---"
+    uv tool install "smg[scan] @ git+https://github.com/femtomc/smg.git"
+fi
+
 # ---- Skill symlinks ----
 echo "--- skill symlinks ---"
 for tool_dir in "$HOME/.claude/skills" "$HOME/.codex/skills"; do

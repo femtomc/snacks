@@ -5,7 +5,7 @@ description: "Modifying .tex files (non-TikZ content)"
 # LaTeX
 
 How to produce publication-quality documents. Covers everything outside TikZ
-graphics (see `tikz.md` for that).
+graphics (see the tikz skill for that).
 
 ## The mental model
 
