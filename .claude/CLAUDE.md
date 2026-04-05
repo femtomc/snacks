@@ -43,7 +43,7 @@ Read when using these tools.
 
 | Skill                         | When                                                              | Related  |
 | ----------------------------- | ----------------------------------------------------------------- | -------- |
-| [bellman](skills/bellman/SKILL.md)  | Coordinating multi-turn agent work across files and modules       | todos    |
+| [bellman](skills/bellman/SKILL.md)  | Coordinating multi-turn agent work across files and modules       |          |
 | [smg](skills/smg/SKILL.md)          | Understanding codebase structure, measuring coupling, enforcing architecture, building LLM context | testing  |
 
 ## Bellman for Multi-Step Work
