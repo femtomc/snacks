@@ -84,10 +84,15 @@ if ! have starship; then
     curl -sS https://starship.rs/install.sh | sh -s -- -y
 fi
 
-# ---- mise (version manager: zig, elixir, node) ----
+# ---- mise (version manager: zig, elixir, node, npx) ----
 if ! have mise; then
     echo "--- mise ---"
     curl https://mise.run | sh
+fi
+# Install mise-managed tools (node gives us npx)
+if have mise; then
+    echo "--- mise install ---"
+    mise install
 fi
 
 # ---- uv (Python tooling) ----
@@ -154,6 +159,18 @@ fi
 if ! have smg; then
     echo "--- smg ---"
     uv tool install "smg[scan] @ git+https://github.com/femtomc/smg.git"
+fi
+
+# ---- Claude Code ----
+if ! have claude; then
+    echo "--- claude code ---"
+    curl -fsSL https://claude.ai/install.sh | sh
+fi
+
+# ---- Codex (OpenAI) ----
+if ! have codex; then
+    echo "--- codex ---"
+    npm install -g @openai/codex
 fi
 
 # ---- Skill symlinks ----
