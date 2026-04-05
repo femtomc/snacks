@@ -1,0 +1,85 @@
+// Dev layout — editor + terminal + stacked aux panes
+// Usage: zellij --layout dev
+layout {
+    default_tab_template {
+        children
+        pane size=1 borderless=true {
+            plugin location="https://github.com/dj95/zjstatus/releases/latest/download/zjstatus.wasm" {
+                color_fg        "#ebdbb2"
+                color_bg        "#3c3836"
+                color_bg_hard   "#1d2021"
+                color_fg0       "#fbf1c7"
+                color_red       "#fb4934"
+                color_green     "#b8bb26"
+                color_yellow    "#fabd2f"
+                color_blue      "#83a598"
+                color_magenta   "#d3869b"
+                color_orange    "#fe8019"
+                color_cyan      "#8ec07c"
+
+                format_left   "{mode}#[fg=$fg,bg=$bg,bold] {session} #[fg=$bg,bg=$bg_hard]{tabs}"
+                format_center ""
+                format_right  "{command_git_branch}#[fg=$bg,bg=$bg_hard]#[fg=$fg,bg=$bg] {datetime}"
+                format_space  "#[bg=$bg_hard]"
+
+                format_hide_on_overlength "true"
+                format_precedence         "lrc"
+                border_enabled            "false"
+                hide_frame_for_single_pane "true"
+
+                mode_normal        "#[bg=$green,fg=$bg_hard,bold] NORMAL #[fg=$green,bg=$bg]"
+                mode_locked        "#[bg=$red,fg=$bg_hard,bold] LOCKED #[fg=$red,bg=$bg]"
+                mode_resize        "#[bg=$yellow,fg=$bg_hard,bold] RESIZE #[fg=$yellow,bg=$bg]"
+                mode_pane          "#[bg=$magenta,fg=$bg_hard,bold] PANE #[fg=$magenta,bg=$bg]"
+                mode_tab           "#[bg=$blue,fg=$bg_hard,bold] TAB #[fg=$blue,bg=$bg]"
+                mode_scroll        "#[bg=$cyan,fg=$bg_hard,bold] SCROLL #[fg=$cyan,bg=$bg]"
+                mode_enter_search  "#[bg=$orange,fg=$bg_hard,bold] SEARCH #[fg=$orange,bg=$bg]"
+                mode_search        "#[bg=$orange,fg=$bg_hard,bold] SEARCH #[fg=$orange,bg=$bg]"
+                mode_rename_tab    "#[bg=$yellow,fg=$bg_hard,bold] RENAME #[fg=$yellow,bg=$bg]"
+                mode_rename_pane   "#[bg=$yellow,fg=$bg_hard,bold] RENAME #[fg=$yellow,bg=$bg]"
+                mode_session       "#[bg=$orange,fg=$bg_hard,bold] SESSION #[fg=$orange,bg=$bg]"
+                mode_move          "#[bg=$magenta,fg=$bg_hard,bold] MOVE #[fg=$magenta,bg=$bg]"
+                mode_prompt        "#[bg=$cyan,fg=$bg_hard,bold] PROMPT #[fg=$cyan,bg=$bg]"
+                mode_tmux          "#[bg=$orange,fg=$bg_hard,bold] TMUX #[fg=$orange,bg=$bg]"
+                mode_default_to_mode "tmux"
+
+                tab_normal              "#[fg=$fg,bg=$bg_hard] {index}:{name} "
+                tab_active              "#[fg=$green,bg=$bg_hard,bold] {index}:{name} "
+                tab_separator           "#[fg=$bg,bg=$bg_hard]│"
+                tab_sync_indicator       "<> "
+                tab_fullscreen_indicator "[] "
+                tab_floating_indicator   "~  "
+
+                command_git_branch_command     "git rev-parse --abbrev-ref HEAD 2>/dev/null"
+                command_git_branch_format      "#[fg=$blue,bg=$bg_hard]  {stdout} "
+                command_git_branch_interval    "10"
+                command_git_branch_rendermode  "static"
+
+                datetime          "#[fg=$fg,bg=$bg] {format} "
+                datetime_format   "%a %d %b %H:%M"
+                datetime_timezone "America/New_York"
+            }
+        }
+    }
+
+    tab name="code" focus=true {
+        pane split_direction="vertical" {
+            pane size="65%" name="editor"
+            pane stacked=true {
+                pane name="terminal"
+                pane name="tests" command="bash" {
+                    args "-c" "echo 'Run tests here — press Enter to start'"
+                    start_suspended true
+                }
+                pane name="logs" command="bash" {
+                    args "-c" "echo 'Tail logs here — press Enter to start'"
+                    start_suspended true
+                }
+            }
+        }
+    }
+
+    tab name="git" {
+        pane command="lazygit"
+    }
+}

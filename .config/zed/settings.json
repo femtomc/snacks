@@ -1,0 +1,40 @@
+{
+    "features": {
+        "inline_completion_provider": "none"
+    },
+    "project_panel": {
+        "dock": "left"
+    },
+    "soft_wrap": "editor_width",
+    "vim_mode": true,
+    "terminal": {
+        "dock": "right"
+    },
+    "theme": "Gruvbox Dark Soft",
+    "ui_font_family": "PragmataPro",
+    "ui_font_size": 20,
+    "format_on_save": "on",
+    "tab_size": 4,
+    "relative_line_numbers": true,
+    "buffer_line_height": "standard",
+    "buffer_font_family": "PragmataPro Mono",
+    "buffer_font_size": 18,
+    "buffer_font_features": {
+        "calt": true,
+        "liga": true
+    },
+    "languages": {
+        "Python": {
+            "format_on_save": "on",
+            "formatter": {
+                "external": {
+                    "command": "zsh",
+                    "arguments": [
+                        "-c",
+                        "ruff check --select=I --fix --stdin-filename {buffer_path} | ruff format --stdin-filename {buffer_path}"
+                    ]
+                }
+            }
+        }
+    }
+}

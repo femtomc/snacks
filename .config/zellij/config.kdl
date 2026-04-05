@@ -1,0 +1,185 @@
+// Zellij config — matches tmux keybindings & aesthetics
+// Remote-to-local copy via OSC 52 (no copy_command set)
+
+// ─── General ─────────────────────────────────────────────────────────────────
+mouse_mode true
+copy_on_select true
+default_layout "default"
+scroll_buffer_size 50000
+session_serialization true
+serialize_pane_viewport true
+pane_viewport_serialization true
+scrollback_lines_to_serialize 10000
+pane_frames true
+auto_layout true
+styled_underlines true
+
+// Hover to focus panes (no click needed)
+focus_follows_mouse true
+
+// First click on an unfocused pane also passes through to the app
+mouse_click_through true
+
+// Disable hover visual noise (frame highlight + help text)
+mouse_hover_effects false
+
+// Clickable file:line links from compilers, grep, etc.
+osc8_hyperlinks true
+
+// Flash pane frame + [!] on tab when a process sends BEL
+visual_bell true
+
+// Skip nags
+show_release_notes false
+show_startup_tips false
+
+// ─── Theme (Gruvbox Dark — matches Ghostty theme) ────────────────────────────
+theme "gruvbox-dark"
+
+themes {
+    gruvbox-dark {
+        fg 235 219 178      // #ebdbb2 — gruvbox fg
+        bg 60 56 54         // #3c3836 — gruvbox bg1 (contrast for selection/UI)
+        black 29 32 33      // #1d2021 — gruvbox bg0-hard
+        white 251 241 199   // #fbf1c7 — gruvbox fg0
+        red 251 73 52       // #fb4934 — gruvbox bright red
+        green 184 187 38    // #b8bb26 — gruvbox bright green
+        yellow 250 189 47   // #fabd2f — gruvbox bright yellow
+        blue 131 165 152    // #83a598 — gruvbox bright blue
+        magenta 211 134 155 // #d3869b — gruvbox bright purple
+        orange 254 128 25   // #fe8019 — gruvbox bright orange
+        cyan 142 192 124    // #8ec07c — gruvbox bright aqua
+    }
+}
+
+// ─── Plugins (loaded in background on session start) ─────────────────────────
+load_plugins {
+    // Auto-lock Zellij when nvim/vim/fzf/etc take focus (prevents keybind collisions)
+    "https://github.com/fresh2dev/zellij-autolock/releases/latest/download/zellij-autolock.wasm" {
+        is_enabled "true"
+        triggers "nvim|vim|git|fzf|zoxide|atuin|lazygit|htop|btop|man|less|codex"
+        reaction_seconds "0.3"
+        print_to_log "false"
+    }
+}
+
+// ─── Keybindings ─────────────────────────────────────────────────────────────
+keybinds {
+    // Swap tmux mode trigger: Ctrl-a instead of Ctrl-b
+    shared_except "tmux" "locked" {
+        unbind "Ctrl b"
+        bind "Ctrl a" { SwitchToMode "Tmux"; }
+    }
+
+    shared_except "locked" {
+        // Session manager (quick access without prefix)
+        bind "Alt w" {
+            LaunchOrFocusPlugin "zellij:session-manager" {
+                floating true
+                move_to_focused_tab true
+            }
+        }
+
+        // Fuzzy keybinding help — forgot a binding? Ctrl-y
+        bind "Ctrl y" {
+            LaunchOrFocusPlugin "https://github.com/karimould/zellij-forgot/releases/latest/download/zellij_forgot.wasm" {
+                floating true
+                "LOAD_ZELLIJ_BINDINGS" "true"
+            }
+        }
+
+        // Fuzzy tab switcher (room)
+        bind "Alt r" {
+            LaunchOrFocusPlugin "https://github.com/rvcas/room/releases/latest/download/room.wasm" {
+                floating true
+                ignore_case true
+                quick_jump true
+            }
+        }
+
+        // Seamless Ctrl+hjkl navigation (Zellij side — Neovim handled by zellij-nav.nvim when locked)
+        bind "Ctrl h" { MoveFocusOrTab "Left"; }
+        bind "Ctrl j" { MoveFocus "Down"; }
+        bind "Ctrl k" { MoveFocus "Up"; }
+        bind "Ctrl l" { MoveFocusOrTab "Right"; }
+    }
+
+    tmux {
+        // Use Ctrl-a as the "send prefix" / exit key
+        bind "Ctrl a" { Write 1; SwitchToMode "Normal"; }
+
+        // Splits matching tmux config: | horizontal, - vertical
+        bind "|" { NewPane "Right"; SwitchToMode "Normal"; }
+        bind "-" { NewPane "Down"; SwitchToMode "Normal"; }
+
+        // Keep default tmux-mode bindings too
+        bind "[" { SwitchToMode "Scroll"; }
+        bind "\"" { NewPane "Down"; SwitchToMode "Normal"; }
+        bind "%" { NewPane "Right"; SwitchToMode "Normal"; }
+        bind "z" { ToggleFocusFullscreen; SwitchToMode "Normal"; }
+        bind "c" { NewTab; SwitchToMode "Normal"; }
+        bind "," { SwitchToMode "RenameTab"; }
+        bind "p" { GoToPreviousTab; SwitchToMode "Normal"; }
+        bind "n" { GoToNextTab; SwitchToMode "Normal"; }
+        bind "Left" { MoveFocus "Left"; SwitchToMode "Normal"; }
+        bind "Right" { MoveFocus "Right"; SwitchToMode "Normal"; }
+        bind "Down" { MoveFocus "Down"; SwitchToMode "Normal"; }
+        bind "Up" { MoveFocus "Up"; SwitchToMode "Normal"; }
+        bind "h" { MoveFocus "Left"; SwitchToMode "Normal"; }
+        bind "l" { MoveFocus "Right"; SwitchToMode "Normal"; }
+        bind "j" { MoveFocus "Down"; SwitchToMode "Normal"; }
+        bind "k" { MoveFocus "Up"; SwitchToMode "Normal"; }
+        bind "o" { FocusNextPane; }
+        bind "d" { Detach; }
+        bind "Space" { NextSwapLayout; }
+        bind "x" { CloseFocus; SwitchToMode "Normal"; }
+
+        // Search (like prefix + / in your tmux config)
+        bind "/" { SwitchToMode "EnterSearch"; SearchInput 0; }
+
+        // Session manager (like tmux prefix + s)
+        bind "s" {
+            LaunchOrFocusPlugin "zellij:session-manager" {
+                floating true
+                move_to_focused_tab true
+            }
+        }
+
+        // Edit scrollback in $EDITOR (dump full pane output into nvim)
+        bind "e" { EditScrollback; SwitchToMode "Normal"; }
+
+
+
+        // Tab navigation by number (like tmux select-window)
+        bind "1" { GoToTab 1; SwitchToMode "Normal"; }
+        bind "2" { GoToTab 2; SwitchToMode "Normal"; }
+        bind "3" { GoToTab 3; SwitchToMode "Normal"; }
+        bind "4" { GoToTab 4; SwitchToMode "Normal"; }
+        bind "5" { GoToTab 5; SwitchToMode "Normal"; }
+        bind "6" { GoToTab 6; SwitchToMode "Normal"; }
+        bind "7" { GoToTab 7; SwitchToMode "Normal"; }
+        bind "8" { GoToTab 8; SwitchToMode "Normal"; }
+        bind "9" { GoToTab 9; SwitchToMode "Normal"; }
+    }
+}
+
+// ─── Quick Reference ─────────────────────────────────────────────────────────
+// Tmux-style (Ctrl-a prefix):
+//   Ctrl-a |     Split right       Ctrl-a -     Split down
+//   Ctrl-a c     New tab           Ctrl-a x     Close pane
+//   Ctrl-a hjkl  Move focus        Ctrl-a z     Fullscreen toggle
+//   Ctrl-a [     Scroll/copy mode  Ctrl-a /     Search
+//   Ctrl-a d     Detach            Ctrl-a 1-9   Go to tab N
+//   Ctrl-a n/p   Next/prev tab     Ctrl-a ,     Rename tab
+//   Ctrl-a s     Session manager   Ctrl-a e     Edit scrollback in $EDITOR
+//
+// Native modes (also available):
+//   Ctrl-p  Pane    Ctrl-t  Tab    Ctrl-n  Resize
+//   Ctrl-s  Scroll  Ctrl-o  Session
+//
+// No mode switch:
+//   Ctrl+hjkl Navigate panes (seamless with Neovim via zellij-nav.nvim)
+//   Alt+n    New pane          Alt+f   Float toggle
+//   Alt+hjkl Move focus        Alt+w   Session manager
+//   Alt+r    Fuzzy tab switcher (room)
+//   Ctrl+y   Keybinding help (fuzzy search)
