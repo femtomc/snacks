@@ -1,7 +1,7 @@
 # snacks
 
-Dotfiles and agent configuration, managed by [yadm](https://yadm.io). One
-command to clone, one command to bootstrap a fresh machine.
+Dotfiles and agent configuration, managed by [yadm](https://yadm.io). Works on
+Linux and macOS. One command to clone, one command to bootstrap a fresh machine.
 
 ```bash
 yadm clone git@github.com:femtomc/snacks.git
@@ -49,7 +49,7 @@ installs:
 | Method | Tools |
 |--------|-------|
 | apt | git, curl, wget, build-essential, cmake, jq, zsh, tmux, kitty, python3 |
-| apt repo | gh (GitHub CLI) |
+| apt / brew | gh (GitHub CLI) |
 | cargo | eza, bat, delta, fd, rg, zoxide, bob-nvim |
 | bob | nvim |
 | git clone | fzf, oh-my-zsh, zsh-autosuggestions, zsh-syntax-highlighting, TPM |

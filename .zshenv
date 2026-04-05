@@ -1,7 +1,7 @@
 . "$HOME/.cargo/env"
 export PATH="$HOME/.local/bin:$PATH"
 export PATH="$HOME/.local/share/bob/nvim-bin:$PATH"
-export PATH="$HOME/Zotero_linux-x86_64:$PATH"
+[ -d "$HOME/Zotero_linux-x86_64" ] && export PATH="$HOME/Zotero_linux-x86_64:$PATH"
 export PATH="$HOME/.config/emacs/bin:$PATH"
 export PATH="$HOME/act:$PATH"
 export ZOTERO_USER_ID="femtomc"

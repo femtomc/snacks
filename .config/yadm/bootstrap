@@ -7,10 +7,12 @@ echo "=== snacks bootstrap ==="
 
 # ---- helpers ----
 have() { command -v "$1" &>/dev/null; }
-need() { have "$1" || return 0; }  # guard for sections that require a prior install
 
-# ---- system packages (apt) ----
-if have apt-get; then
+OS="$(uname -s)"    # Linux or Darwin
+ARCH="$(uname -m)"  # x86_64 or arm64
+
+# ---- system packages ----
+if [ "$OS" = "Linux" ] && have apt-get; then
     echo "--- apt packages ---"
     sudo apt-get update -qq
     sudo apt-get install -y -qq \
@@ -18,18 +20,33 @@ if have apt-get; then
         zsh tmux kitty \
         python3 python3-venv \
         fontconfig unzip
+elif [ "$OS" = "Darwin" ]; then
+    if ! have brew; then
+        echo "--- homebrew ---"
+        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+        eval "$(/opt/homebrew/bin/brew shellenv 2>/dev/null || /usr/local/bin/brew shellenv)"
+    fi
+    echo "--- brew packages ---"
+    brew install git curl wget cmake jq \
+        zsh tmux kitty \
+        python3 \
+        fontconfig unzip
 fi
 
 # ---- GitHub CLI ----
 if ! have gh; then
     echo "--- gh (GitHub CLI) ---"
-    (type -p wget >/dev/null || sudo apt-get install wget -y) \
-        && sudo mkdir -p -m 755 /etc/apt/keyrings \
-        && out=$(mktemp) && wget -qO "$out" https://cli.github.com/packages/githubcli-archive-keyring.gpg \
-        && cat "$out" | sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg >/dev/null \
-        && sudo chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg \
-        && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list >/dev/null \
-        && sudo apt-get update -qq && sudo apt-get install -y -qq gh
+    if [ "$OS" = "Darwin" ]; then
+        brew install gh
+    elif have apt-get; then
+        (type -p wget >/dev/null || sudo apt-get install wget -y) \
+            && sudo mkdir -p -m 755 /etc/apt/keyrings \
+            && out=$(mktemp) && wget -qO "$out" https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+            && cat "$out" | sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg >/dev/null \
+            && sudo chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg \
+            && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list >/dev/null \
+            && sudo apt-get update -qq && sudo apt-get install -y -qq gh
+    fi
 fi
 
 # ---- Rust toolchain ----
@@ -51,7 +68,6 @@ cargo_tools=(
     bob-nvim   # nvim version manager
 )
 for tool in "${cargo_tools[@]}"; do
-    # map crate name -> binary name for the check
     case "$tool" in
         git-delta) bin=delta ;;
         fd-find)   bin=fd ;;
@@ -71,7 +87,7 @@ if ! have nvim; then
     bob use stable
 fi
 
-# ---- fzf (git install, not apt — gives keybindings + shell integration) ----
+# ---- fzf (git install — gives keybindings + shell integration) ----
 if [ ! -d "$HOME/.fzf" ]; then
     echo "--- fzf ---"
     git clone --depth 1 https://github.com/junegunn/fzf.git "$HOME/.fzf"
@@ -89,7 +105,6 @@ if ! have mise; then
     echo "--- mise ---"
     curl https://mise.run | sh
 fi
-# Install mise-managed tools (node gives us npx)
 if have mise; then
     echo "--- mise install ---"
     mise install
@@ -117,7 +132,14 @@ fi
 if ! have lazygit; then
     echo "--- lazygit ---"
     LAZYGIT_VERSION=$(curl -s "https://api.github.com/repos/jesseduffield/lazygit/releases/latest" | jq -r '.tag_name' | sed 's/^v//')
-    curl -Lo /tmp/lazygit.tar.gz "https://github.com/jesseduffield/lazygit/releases/download/v${LAZYGIT_VERSION}/lazygit_${LAZYGIT_VERSION}_Linux_x86_64.tar.gz"
+    if [ "$OS" = "Darwin" ]; then
+        LG_PLATFORM="Darwin"
+        [ "$ARCH" = "arm64" ] && LG_ARCH="arm64" || LG_ARCH="x86_64"
+    else
+        LG_PLATFORM="Linux"
+        LG_ARCH="x86_64"
+    fi
+    curl -Lo /tmp/lazygit.tar.gz "https://github.com/jesseduffield/lazygit/releases/download/v${LAZYGIT_VERSION}/lazygit_${LAZYGIT_VERSION}_${LG_PLATFORM}_${LG_ARCH}.tar.gz"
     tar xf /tmp/lazygit.tar.gz -C /tmp lazygit
     sudo install /tmp/lazygit /usr/local/bin/lazygit
     rm /tmp/lazygit /tmp/lazygit.tar.gz
