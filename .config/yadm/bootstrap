@@ -1,0 +1,82 @@
+#!/bin/bash
+set -euo pipefail
+
+# snacks bootstrap — run after `yadm clone` on a fresh machine
+
+echo "=== snacks bootstrap ==="
+
+# --- Package manager ---
+if command -v apt-get &>/dev/null; then
+    sudo apt-get update -qq
+    sudo apt-get install -y -qq \
+        git curl wget build-essential \
+        zsh tmux jq \
+        fzf bat eza fd-find zoxide \
+        ripgrep delta
+fi
+
+# --- Oh My Zsh ---
+if [ ! -d "$HOME/.oh-my-zsh" ]; then
+    echo "Installing oh-my-zsh..."
+    sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+fi
+
+# zsh plugins
+ZSH_CUSTOM="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}"
+[ -d "$ZSH_CUSTOM/plugins/zsh-autosuggestions" ] || \
+    git clone https://github.com/zsh-autosuggestions/zsh-autosuggestions "$ZSH_CUSTOM/plugins/zsh-autosuggestions"
+[ -d "$ZSH_CUSTOM/plugins/zsh-syntax-highlighting" ] || \
+    git clone https://github.com/zsh-users/zsh-syntax-highlighting "$ZSH_CUSTOM/plugins/zsh-syntax-highlighting"
+
+# --- Starship prompt ---
+if ! command -v starship &>/dev/null; then
+    echo "Installing starship..."
+    curl -sS https://starship.rs/install.sh | sh -s -- -y
+fi
+
+# --- mise (version manager for zig, elixir, node) ---
+if ! command -v mise &>/dev/null; then
+    echo "Installing mise..."
+    curl https://mise.run | sh
+fi
+
+# --- uv (Python tooling) ---
+if ! command -v uv &>/dev/null; then
+    echo "Installing uv..."
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+fi
+
+# --- Rust toolchain ---
+if ! command -v rustup &>/dev/null; then
+    echo "Installing rustup..."
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+fi
+
+# --- Skill symlinks ---
+# Link canonical skills into .claude and .codex
+for tool_dir in "$HOME/.claude/skills" "$HOME/.codex/skills"; do
+    mkdir -p "$tool_dir"
+    for skill in "$HOME/.config/skills"/*/; do
+        name=$(basename "$skill")
+        target="$tool_dir/$name"
+        if [ ! -e "$target" ]; then
+            ln -s "$HOME/.config/skills/$name" "$target"
+            echo "  linked $name → $tool_dir"
+        fi
+    done
+done
+
+# --- Set default shell ---
+if [ "$SHELL" != "$(which zsh)" ]; then
+    echo "Setting zsh as default shell..."
+    chsh -s "$(which zsh)" || echo "  (run manually: chsh -s \$(which zsh))"
+fi
+
+# --- Decrypt secrets ---
+if command -v yadm &>/dev/null && [ -f "$HOME/.config/yadm/encrypt" ]; then
+    echo "Decrypting secrets..."
+    yadm decrypt || echo "  (run manually: yadm decrypt)"
+fi
+
+echo "=== bootstrap complete ==="
+echo "Restart your shell or run: exec zsh"

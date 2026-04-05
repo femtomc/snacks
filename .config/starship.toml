@@ -1,0 +1,4 @@
+# ~/.config/starship.toml
+
+add_newline = true
+command_timeout = 1000
