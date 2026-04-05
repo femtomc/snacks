@@ -1,0 +1,117 @@
+#!/bin/bash
+set -euo pipefail
+
+# snacks pre-commit hook
+# Checks staged files for common issues before committing.
+
+STAGED=$(yadm diff --cached --name-only --diff-filter=ACM)
+[ -z "$STAGED" ] && exit 0
+
+errors=0
+warn() { echo "pre-commit: $1"; }
+fail() { echo "pre-commit ERROR: $1"; errors=$((errors + 1)); }
+
+# ---- No secrets ----
+for f in $STAGED; do
+    full="$HOME/$f"
+    [ -f "$full" ] || continue
+
+    # Skip binary files and this hook itself (contains detection patterns)
+    file "$full" | grep -q 'text' || continue
+    [ "$f" = ".config/yadm/hooks/pre-commit" ] && continue
+
+    if grep -qEi '(ANTHROPIC_API_KEY|OPENAI_API_KEY|sk-[a-zA-Z0-9]{20,}|ghp_[a-zA-Z0-9]{36}|-----BEGIN (RSA|EC|OPENSSH) PRIVATE KEY)' "$full" 2>/dev/null; then
+        fail "$f appears to contain secrets or private keys"
+    fi
+done
+
+# ---- Shell scripts: shellcheck ----
+if command -v shellcheck &>/dev/null; then
+    for f in $STAGED; do
+        full="$HOME/$f"
+        [ -f "$full" ] || continue
+        case "$f" in
+            *.sh|.bashrc|.bash_profile|.config/yadm/bootstrap)
+                shellcheck -s bash -e SC1090,SC1091,SC2034,SC2155,SC2024 "$full" || {
+                    fail "$f: shellcheck found issues"
+                }
+                ;;
+        esac
+    done
+fi
+
+# ---- Lua: stylua check ----
+if command -v stylua &>/dev/null; then
+    lua_files=""
+    for f in $STAGED; do
+        case "$f" in *.lua) [ -f "$HOME/$f" ] && lua_files="$lua_files $HOME/$f" ;; esac
+    done
+    if [ -n "$lua_files" ]; then
+        stylua --check $lua_files 2>/dev/null || {
+            fail "Lua files need formatting (run: stylua $lua_files)"
+        }
+    fi
+fi
+
+# ---- JSON: syntax check ----
+if command -v jq &>/dev/null; then
+    for f in $STAGED; do
+        full="$HOME/$f"
+        case "$f" in
+            *.json)
+                [ -f "$full" ] && jq empty "$full" 2>/dev/null || {
+                    fail "$f: invalid JSON"
+                }
+                ;;
+        esac
+    done
+fi
+
+# ---- TOML: syntax check ----
+if command -v python3 &>/dev/null; then
+    for f in $STAGED; do
+        full="$HOME/$f"
+        case "$f" in
+            *.toml)
+                [ -f "$full" ] && python3 -c "import tomllib; tomllib.load(open('$full','rb'))" 2>/dev/null || {
+                    fail "$f: invalid TOML"
+                }
+                ;;
+        esac
+    done
+fi
+
+# ---- Executable scripts must have +x ----
+for f in $STAGED; do
+    full="$HOME/$f"
+    [ -f "$full" ] || continue
+    case "$f" in
+        *.sh|.config/yadm/bootstrap)
+            if [ ! -x "$full" ]; then
+                fail "$f: should be executable (run: chmod +x $full)"
+            fi
+            ;;
+    esac
+done
+
+# ---- No hardcoded /home/femtomc in shell configs ----
+for f in $STAGED; do
+    full="$HOME/$f"
+    [ -f "$full" ] || continue
+    case "$f" in
+        .zshrc|.bashrc|.zshenv|.zprofile|.config/yadm/bootstrap)
+            # Allow comments mentioning the path
+            if grep -n '/home/femtomc' "$full" | grep -v '^\s*#' | grep -qv 'conda init\|juliaup'; then
+                warn "$f: contains hardcoded /home/femtomc (use \$HOME)"
+            fi
+            ;;
+    esac
+done
+
+if [ "$errors" -gt 0 ]; then
+    echo
+    echo "pre-commit: $errors error(s) found. Commit aborted."
+    exit 1
+fi
+
+exit 0

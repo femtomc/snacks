@@ -42,7 +42,7 @@ if ! have gh; then
         (type -p wget >/dev/null || sudo apt-get install wget -y) \
             && sudo mkdir -p -m 755 /etc/apt/keyrings \
             && out=$(mktemp) && wget -qO "$out" https://cli.github.com/packages/githubcli-archive-keyring.gpg \
-            && cat "$out" | sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg >/dev/null \
+            && sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg < "$out" >/dev/null \
             && sudo chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg \
             && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list >/dev/null \
             && sudo apt-get update -qq && sudo apt-get install -y -qq gh
@@ -69,11 +69,11 @@ cargo_tools=(
 )
 for tool in "${cargo_tools[@]}"; do
     case "$tool" in
-        git-delta) bin=delta ;;
-        fd-find)   bin=fd ;;
-        ripgrep)   bin=rg ;;
-        bob-nvim)  bin=bob ;;
-        *)         bin=$tool ;;
+        git-delta) bin="delta" ;;
+        fd-find)   bin="fd" ;;
+        ripgrep)   bin="rg" ;;
+        bob-nvim)  bin="bob" ;;
+        *)         bin="$tool" ;;
     esac
     if ! have "$bin"; then
         echo "  cargo install $tool"
@@ -230,6 +230,14 @@ for tool_dir in "$HOME/.claude/skills" "$HOME/.codex/skills"; do
         fi
     done
 done
+
+# ---- Pre-commit hook ----
+if have yadm && [ -f "$HOME/.config/yadm/hooks/pre-commit" ]; then
+    echo "--- pre-commit hook ---"
+    HOOKS_DIR="$HOME/.local/share/yadm/repo.git/hooks"
+    cp "$HOME/.config/yadm/hooks/pre-commit" "$HOOKS_DIR/pre-commit"
+    chmod +x "$HOOKS_DIR/pre-commit"
+fi
 
 # ---- Default shell ----
 if [ "$SHELL" != "$(which zsh)" ]; then
