@@ -11,6 +11,17 @@ structured memory of what was already tried.
 
 You decompose. Bellman executes.
 
+## Which role are you?
+
+**If bellman dispatched you** — your preamble says "You are a Bellman
+agent assigned to issue ..." and hands you an issue ID — skip to
+[Execution (leaf work)](#execution-leaf-work). Everything between here
+and that section is for orchestrators. Your preamble and issue body
+already tell you what to do; the Execution section fills in the details.
+
+**If you are reaching for bellman yourself** — you have a task and want
+bellman to coordinate it — you are the orchestrator. Read on.
+
 ## Your role: orchestrator
 
 When you reach for bellman, you are the orchestrator. You do three things:
@@ -384,6 +395,16 @@ This returns five things — read all of them:
 - **comments**: durable messages from prior agents (handoffs, decisions).
 - **parent**: the broader goal. Disambiguates when the body is unclear.
 - **siblings**: parallel work alongside you. Avoid duplication.
+
+**Step 1b — check your surroundings.** Optional but valuable when the
+body is ambiguous or you are one of several parallel workers:
+
+    bellman status                         # where does your issue sit in the DAG?
+    bellman next --json --brief            # who else is running alongside you?
+
+Siblings tell you what not to duplicate. Parent context tells you the
+broader goal. If your issue touches files another in-progress sibling
+also touches, coordinate via comments or close `blocked`.
 
 **Step 2 — do the work.**
 
