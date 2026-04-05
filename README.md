@@ -53,7 +53,6 @@ it.
 │   │
 │   ├── nvim/                             LazyVim (Lean 4, oil, typst)
 │   ├── zed/settings.json                 vim mode, PragmataPro, ruff
-│   ├── Code/User/                        vim mode, TX-02, neovim backend
 │   │
 │   ├── skills/ (13 total)                canonical agent skills
 │   ├── wallpaper/platform.jpg            shared background
@@ -87,7 +86,7 @@ lag months behind and sometimes ship under different binary names.
 | cargo | eza, bat, delta, fd, rg, zoxide, bob-nvim |
 | bob | nvim (version-managed) |
 | git clone | fzf, oh-my-zsh + plugins, TPM |
-| curl | rustup, starship, mise, uv, bun, flyctl, Claude Code |
+| curl | rustup, starship, mise, uv, bun, flyctl, elan (Lean 4), Claude Code |
 | npm | Codex |
 | uv tool | bellman (work-graph orchestrator), smg (architecture graph) |
 | GitHub release | lazygit, act |

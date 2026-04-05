@@ -100,6 +100,12 @@ if ! have starship; then
     curl -sS https://starship.rs/install.sh | sh -s -- -y
 fi
 
+# ---- elan (Lean 4 version manager) ----
+if ! have elan; then
+    echo "--- elan ---"
+    curl https://elan-init.github.io/elan/elan-init.sh -sSf | sh -s -- -y --default-toolchain stable
+fi
+
 # ---- mise (version manager: zig, elixir, node, npx) ----
 if ! have mise; then
     echo "--- mise ---"
