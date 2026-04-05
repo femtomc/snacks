@@ -1,0 +1,27 @@
+[Default Applications]
+x-scheme-handler/http=userapp-Firefox-ZNOD91.desktop
+x-scheme-handler/https=userapp-Firefox-ZNOD91.desktop
+x-scheme-handler/chrome=userapp-Firefox-ZNOD91.desktop
+text/html=userapp-Firefox-ZNOD91.desktop
+application/x-extension-htm=userapp-Firefox-ZNOD91.desktop
+application/x-extension-html=userapp-Firefox-ZNOD91.desktop
+application/x-extension-shtml=userapp-Firefox-ZNOD91.desktop
+application/xhtml+xml=userapp-Firefox-ZNOD91.desktop
+application/x-extension-xhtml=userapp-Firefox-ZNOD91.desktop
+application/x-extension-xht=userapp-Firefox-ZNOD91.desktop
+x-scheme-handler/claude-cli=claude-code-url-handler.desktop
+
+[Added Associations]
+x-scheme-handler/http=userapp-Firefox-ZNOD91.desktop;
+x-scheme-handler/https=userapp-Firefox-ZNOD91.desktop;
+x-scheme-handler/chrome=userapp-Firefox-ZNOD91.desktop;
+text/html=userapp-Firefox-ZNOD91.desktop;
+application/x-extension-htm=userapp-Firefox-ZNOD91.desktop;
+application/x-extension-html=userapp-Firefox-ZNOD91.desktop;
+application/x-extension-shtml=userapp-Firefox-ZNOD91.desktop;
+application/xhtml+xml=userapp-Firefox-ZNOD91.desktop;
+application/x-extension-xhtml=userapp-Firefox-ZNOD91.desktop;
+application/x-extension-xht=userapp-Firefox-ZNOD91.desktop;
+image/jpeg=com.github.jeromerobert.pdfarranger.desktop;display-im6.q16.desktop;
+font/ttf=org.gnome.FontManager.desktop;
+font/otf=org.gnome.FontManager.desktop;

@@ -195,6 +195,28 @@ if ! have codex; then
     npm install -g @openai/codex
 fi
 
+# ---- keyd (Mac-style keybindings, Linux only) ----
+if [ "$OS" = "Linux" ]; then
+    if ! have keyd; then
+        echo "--- keyd ---"
+        if have apt-get; then
+            sudo apt-get install -y -qq keyd 2>/dev/null || {
+                # Build from source if not in repos
+                tmpdir=$(mktemp -d)
+                git clone https://github.com/rvaiya/keyd "$tmpdir/keyd"
+                cd "$tmpdir/keyd" && make && sudo make install
+                cd "$HOME" && rm -rf "$tmpdir"
+            }
+        fi
+    fi
+    if [ -f "$HOME/.config/keyd/default.conf" ]; then
+        echo "--- keyd config ---"
+        sudo mkdir -p /etc/keyd
+        sudo cp "$HOME/.config/keyd/default.conf" /etc/keyd/default.conf
+        sudo systemctl enable keyd && sudo systemctl restart keyd
+    fi
+fi
+
 # ---- Skill symlinks ----
 echo "--- skill symlinks ---"
 for tool_dir in "$HOME/.claude/skills" "$HOME/.codex/skills"; do
