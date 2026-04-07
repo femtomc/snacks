@@ -16,6 +16,7 @@ setopt HIST_IGNORE_SPACE
 # Aliases
 alias ls='eza'
 alias cat='bat'
+alias claude='claude --system-prompt-file ~/.config/claude/system-prompt.md'
 alias tmux-gui='tmux new-session \; new-window "tmux set-option -ga terminal-overrides \",$TERM:Tc\"; tmux detach"; tmux attach'
 alias qs='fzf --preview "bat --style=numbers --color=always {} | head -500"'
 alias d='kitty +kitten diff'
