@@ -13,7 +13,6 @@ Apply regardless of task type.
 | ----------------------------------- | ---------------------------------------------------------------- | ---------------- |
 | [writing](skills/writing/SKILL.md)        | Every piece of prose: commits, comments, doc strings | commits          |
 | [commits](skills/commits/SKILL.md)        | Every git commit                                     | writing          |
-| [references](skills/references/SKILL.md)  | Citing papers, linking prior work, looking up external sources | writing |
 
 ### Language
 
@@ -53,12 +52,10 @@ files, multiple deliverables, subtask dependencies, or work that benefits
 from structured decomposition — you MUST use `bellman` to organize it. Do
 not spawn ad-hoc subagents for multi-step work. Use bellman.
 
-Bellman gives you a durable work graph, an append-only event log, and
-structured failure records (nogoods) that persist across agent turns.
-Failed approaches are never repeated. Successful approaches (goods) are
-available to every subsequent agent. It supports hierarchical
-decomposition, parallel execution with conflict detection, causal repair,
-and reactive supervision — none of which ad-hoc subagents provide.
+Bellman is an execution engine. You describe a DAG of issues with
+dependency edges, then `bellman run` dispatches agents to execute each
+issue in dependency order, retrying failures with structured memory of
+what was already tried. You decompose. Bellman executes.
 
 **When you MUST use bellman:**
 
@@ -76,16 +73,27 @@ and reactive supervision — none of which ad-hoc subagents provide.
   change.
 - Exploratory questions or research that doesn't produce durable output.
 
-**How to get started:**
+**The orchestrator workflow:**
 
-    bellman skill                    # learn the model
-    bellman skill orchestration      # learn the orchestrator loop
-    bellman init <prompt-file>       # bootstrap a run
-    bellman run --repair             # drive to completion
+    bellman init <prompt-file>       # create a run with a root issue
+    # decompose root into children with bellman mutate create
+    # each child: --body, --require (order), --agent/--model (who executes)
+    bellman mutate close root expanded   # yield — you are done decomposing
+    bellman run --agent claude-acp --repair  # bellman dispatches agents
+
+After decomposing, hand off to `bellman run`. Do not execute leaf issues
+yourself — that abandons the durable state, retry semantics, and parallel
+dispatch that bellman exists to provide.
+
+**Profile-based routing:** Before decomposing, run `bellman profile list`
+to discover available agent profiles. Each profile bundles an agent, model,
+and mode tuned for a class of work — read the annotations to decide which
+profile fits each child issue. Assign via `--profile <name>` on
+`bellman mutate create`. Issues without a profile use the runner's defaults.
 
 The CLI is self-documenting — every command supports `--help`, and
-`bellman skill <topic>` teaches cross-cutting workflows (execution,
-decomposition, concurrency, routing, repair, observation, orchestration).
+`bellman skill <topic>` teaches cross-cutting workflows (orchestration,
+decomposition, execution, concurrency, routing, repair, observation).
 
 ## Tooling
 

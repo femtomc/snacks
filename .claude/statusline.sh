@@ -38,25 +38,9 @@ IFS=$'\t' read -r model cwd project ctx_pct cache_pct < <(echo "$input" | jq -r 
 # Context info
 ctx_info="ctx:${ctx_pct}% cache:${cache_pct}%"
 
-# Git info
+# Git branch only (no status — too expensive per render)
 if git -C "$cwd" rev-parse --git-dir >/dev/null 2>&1; then
-  branch=$(git -C "$cwd" --no-optional-locks branch --show-current 2>/dev/null || echo 'detached')
-  gst=$(git -C "$cwd" --no-optional-locks status --porcelain 2>/dev/null)
-  if [ -z "$gst" ]; then
-    state='clean'
-  else
-    m=$(echo "$gst" | grep -c '^ M' || true)
-    a=$(echo "$gst" | grep -c '^A'  || true)
-    d=$(echo "$gst" | grep -c '^D'  || true)
-    u=$(echo "$gst" | grep -c '^??' || true)
-    parts=''
-    [ "$m" -gt 0 ] && parts="${parts}~${m}"
-    [ "$a" -gt 0 ] && parts="${parts}+${a}"
-    [ "$d" -gt 0 ] && parts="${parts}-${d}"
-    [ "$u" -gt 0 ] && parts="${parts}?${u}"
-    state="$parts"
-  fi
-  git_info="${branch} [${state}]"
+  git_info=$(git -C "$cwd" --no-optional-locks branch --show-current 2>/dev/null || echo 'detached')
 else
   git_info='no-git'
 fi
@@ -65,7 +49,7 @@ fi
 if [ "$cwd" = "$project" ]; then
   dir='~'
 elif [[ "$cwd" == "${project}/"* ]]; then
-  dir="~${cwd#$project}"
+  dir="~${cwd#"$project"}"
 else
   dir="$cwd"
 fi

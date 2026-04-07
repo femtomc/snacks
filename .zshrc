@@ -2,6 +2,9 @@
 [[ -z "$TERM" ]] && export TERM=xterm-256color
 export COLORTERM=truecolor
 
+# Claude Code: flicker-free fullscreen rendering
+export CLAUDE_CODE_NO_FLICKER=1
+
 # History configuration
 HISTFILE=~/.zsh_history
 HISTSIZE=10000
