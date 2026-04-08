@@ -44,6 +44,31 @@ Read when using these tools.
 | ----------------------------- | ----------------------------------------------------------------- | -------- |
 | [bellman](skills/bellman/SKILL.md)  | Coordinating multi-turn agent work across files and modules       |          |
 | [smg](skills/smg/SKILL.md)          | Understanding codebase structure, measuring coupling, enforcing architecture, building LLM context | testing  |
+| [glom](skills/glom/SKILL.md)        | Searching agent session history, tool-call patterns, and memory across ~/.claude and ~/.codex |          |
+
+## Token-Efficient Codebase Exploration
+
+**Prefer smg over Read/Grep for structural questions.** Reading a source
+file costs hundreds of context-window lines. `smg` answers the same
+structural questions in a compact table or card:
+
+- "What is X?" — `smg about X` (a compact card) instead of `Read src/x.py` (hundreds of lines).
+- "Where is X used?" — `smg usages X` (a capped table) instead of `Grep` (unbounded).
+- "Find something by keyword" — `smg search X` (ranked hits) instead of `Glob` + `Grep`.
+- "What's the architecture?" — `smg analyze` (a one-screen summary) instead of reading dozens of files.
+- "Pack context for a question" — `smg context X --tokens 8000` (auto-packed by graph proximity).
+
+Only fall back to `Read` when you need the full implementation body of a
+specific function — after `smg` has told you which function and where it is.
+
+**Prefer glom for session/history questions.** Finding a prior session or
+tool-call pattern via `glom search` returns a compact table. Manually
+navigating `~/.claude/projects/` and reading JSONL files costs thousands
+of lines.
+
+Both tools emit compact ASCII tables. Flag availability varies by
+command — run `<cmd> --help` to confirm. Search output uses the
+canonical columns: `rank kind name location snippet`.
 
 ## Bellman for Multi-Step Work
 
