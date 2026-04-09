@@ -118,7 +118,8 @@ profile fits each child issue. Assign via `--profile <name>` on
 
 The CLI is self-documenting — every command supports `--help`, and
 `bellman skill <topic>` teaches cross-cutting workflows (orchestration,
-decomposition, execution, concurrency, routing, repair, observation).
+decomposition, execution, concurrency, routing, repair, observe, graph,
+monitor, worker, advanced).
 
 ## Tooling
 

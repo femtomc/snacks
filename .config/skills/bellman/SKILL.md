@@ -175,7 +175,7 @@ parent DAG.
 
 **How:** create a separate bellman run for the subproblem:
 
-    sub=$(bellman init --run-id-only <(echo "explore approach X"))
+    sub=$(echo "explore approach X" | bellman init --run-id-only -)
     bellman run --run-id "$sub" --agent claude-acp --repair
     # on success, feed results back to the main run
 
@@ -197,6 +197,16 @@ after all work is done.
 
     bellman supervise --checker ./validate.sh
 
+The checker is invoked as `CHECKER <issue-id>`. Exit 0 means validation
+passed; non-zero reopens the issue. Additional knobs:
+
+- `--claim-timeout` — reclaim stale in-progress issues (see
+  [stale claim recovery](#stale-claim-recovery)).
+- `--auto-reexpand` / `--max-reexpand-risk` — re-expand a parent after
+  repeated futile failures.
+- `--repair/--no-repair`, `--max-attempts`, `--cascade` — same repair
+  semantics as `bellman run`.
+
 The supervisor rejects closes that violate the constraint, catching
 problems as they happen rather than after all children settle.
 
@@ -212,8 +222,14 @@ problems as they happen rather than after all children settle.
       --execution-mode parallel --edit-path src/evaluator.py
 
 Scope types: `--edit-path` (exclusive write), `--read-path` (shared
-read), `--lock` (named semantic lock). Overlapping edit paths serialize
-automatically. No scope declared = conflicts with everything.
+read), `--lock` (named semantic lock), `--read-only` (no file writes —
+safe to parallelize without declaring paths). Overlapping edit paths
+serialize automatically.
+
+A parallel issue with no scope (`--edit-path`, `--read-path`, `--lock`,
+or `--read-only`) serializes against everything and the CLI warns:
+*Add --edit-path or --read-only to enable concurrency.* Always declare
+scope explicitly.
 
 Audit before execution: `bellman inspect concurrency --root <id>`.
 
@@ -254,7 +270,20 @@ Claims ready issues, dispatches agents, waits when blocked, retries on
 failure, exits when the scope is final. The `--agent` flag sets the
 default; per-issue routing (from decomposition) overrides it.
 
-Use `--workers N` with parallel-scoped issues for concurrent execution.
+Key flags:
+
+- `--workers N` — concurrent execution for parallel-scoped issues.
+- `--claim-timeout SECS` — reclaim in-progress issues with no heartbeat
+  (minimum 10s; values below 30s emit a warning). See
+  [stale claim recovery](#stale-claim-recovery).
+- `--control-listen HOST:PORT` — start an HTTP control endpoint for
+  remote execution (see [remote execution](#remote-execution)).
+- `--token-budget N` — stop after cumulative tokens exceed a limit.
+- `--progress` — stream compact one-line progress updates to stderr.
+
+`bellman step` advances by at most one issue per call and composes into
+a loop: `while bellman step --root root; do :; done`. It supports the
+same `--claim-timeout` and `--control-listen` flags.
 
 ## Live observation
 
@@ -282,8 +311,14 @@ timer. Use this for any run you are actively orchestrating:
     while :; do clear; bellman status; \
       bellman wait --for-change >/dev/null 2>&1 || sleep 2; done
 
-**Event tail** — stream structured events for scripting or watching
-alongside the dashboard:
+**Activity tail** — merged tracker and ACP activity, auto-follows:
+
+    bellman tail --follow
+
+Filter by issue with `--issue <id>`, by event type with `--type` or
+`--type-prefix`, or control history depth with `--backlog N`.
+
+**Event tail** — lower-level structured events for scripting:
 
     bellman events --follow | jq -c '{type, issue_id, at}'
 
@@ -332,7 +367,14 @@ See `bellman skill monitor` for the full reference.
 
     bellman status
     bellman inspect validate --root <id>
-    bellman mutate close root success
+    bellman close root success
+
+`bellman close` is a shortcut for `bellman mutate close`. Other common
+guesses get helpful suggestions: `bellman open` → "Did you mean:
+bellman mutate create?", `bellman issues` → "Did you mean: bellman
+inspect issues?". Typos get fuzzy-matched. Outcome validation is built
+in: if you pass a missing or invalid outcome, the CLI shows the valid
+outcomes with descriptions.
 
 The `kind` field from `inspect validate` tells you what to do next:
 `complete`, `ready`, `running`, `retryable_failure`, etc.
@@ -373,6 +415,11 @@ Nogoods persist across retries. Always check before starting work.
     bellman inspect repair-preview <id>  # preview before repairing
 
 Record what worked: `bellman comment add <id> "approach=X" --kind goods`.
+
+**Attempt-ID fences:** after a stale claim is reclaimed (via
+`--claim-timeout`), the original agent's attempt is fenced — its
+subsequent `close` and `comment` calls are rejected. This prevents
+zombie workers from corrupting state after a reclaim.
 
 ## Execution (leaf work)
 
@@ -436,11 +483,63 @@ it prevents future agents from wasting a turn on the same dead end.
 
 Run `bellman skill worker` for the complete guide.
 
+## Pre-dispatch preparation
+
+Attach a shell command that runs after claim but before agent dispatch:
+
+    bellman mutate create "migrate" --body "..." --parent <id> \
+      --prepare-command "./setup-db.sh" \
+      --prepare-timeout 60 \
+      --prepare-cwd /opt/infra
+
+If preparation fails, the issue is closed with detail and a nogood
+recording the failure. Use this for environment setup, artifact fetching,
+or validation gates that must pass before an agent runs.
+
+## Remote execution
+
+Custom executor commands let bellman dispatch work to remote nodes
+instead of running agents locally.
+
+**Per-issue executor:**
+
+    bellman mutate create "train model" --body "..." --parent <id> \
+      --executor-command "ssh gpu-box bellman execute-request" \
+      --executor-timeout 3600 --executor-cwd /workspace
+
+The executor command receives a JSON execution request on stdin and must
+run a bellman agent turn. `bellman execute-request` is the built-in
+helper for the remote side.
+
+**Control endpoint:** start the orchestrator with `--control-listen` so
+remote agents can reach the store:
+
+    bellman run --agent claude-acp --repair --control-listen 0.0.0.0:9100
+
+Remote nodes need `BELLMAN_CONTROL_URL` set in their environment. When
+set, CLI commands (`context`, `comment add`, `close`, etc.) proxy
+through the control endpoint instead of accessing the local store.
+
+## Stale claim recovery
+
+Long-running or crashed agents can hold claims indefinitely. Use
+`--claim-timeout SECS` on `run`, `step`, or `supervise` to reclaim
+in-progress issues with no heartbeat:
+
+    bellman run --agent claude-acp --repair --claim-timeout 120
+
+Minimum value is 10 seconds. Values below 30 seconds emit a warning.
+After reclaim, the stale agent's attempt is fenced — see
+[attempt-ID fences](#repair).
+
 ## Advanced
 
 - `bellman re-expand <id>` — discard children, try new decomposition
 - `bellman at-risk <id>` — check blast radius before repair
 - `--tag` on create for partitioned views and scoped stepping
-- `bellman control interrupt/resume` — durable pause/resume
+- `bellman control interrupt/resume/repair` — durable pause, resume, or
+  remote repair
 - `bellman inspect metrics` for performance analysis
+- `bellman inspect issues --include-depth` for depth monitoring
 - `bellman search "query"` for full-text search across all runs
+- `bellman execute-request` for remote-node agent execution
