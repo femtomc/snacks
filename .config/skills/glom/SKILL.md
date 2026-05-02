@@ -4,98 +4,87 @@ description: "Searching agent session history, tool-call patterns, and memory ac
 
 # glom — Agent Context Index
 
-`glom` indexes and searches the session transcripts, tool calls, memory
-files, and settings across `~/.claude` and `~/.codex`. It is backed by
-SQLite FTS5 and lets you find prior sessions by keyword, discover
-tool-call frequency, and inspect individual documents.
+`glom` indexes and searches session transcripts, tool calls, memory files, and
+settings across `~/.claude` and `~/.codex`. SQLite FTS5 backed.
 
 ## Why glom
 
-Agents accumulate thousands of session files and tool-call records.
-Without `glom`, finding a prior session requires guessing file paths
-and grepping through JSONL. With `glom`, a single `glom search X`
-returns 10 ranked results in a compact table.
+Agents accumulate thousands of session files. Without `glom`, finding a prior
+session means guessing paths and grepping JSONL.
 
 | Task                           | Without glom                     | With glom                             |
 | ------------------------------ | -------------------------------- | ------------------------------------- |
-| Find a prior session by topic  | Glob + Grep through ~/.claude    | `glom search 'topic'` (ranked hits)   |
-| Which tools do agents use most | Parse JSONL manually             | `glom tools --names` (a compact table)|
-| Find sessions that used a tool | Grep for tool name in JSONL      | `glom tools 'Read'` (ranked hits)     |
-| Inspect a specific session     | `Read` a 100 KB+ JSONL file      | `glom show <path>` (truncated panel)  |
-| Index statistics               | Count files manually             | `glom stats` (fixed-size table)       |
+| Find a prior session by topic  | Glob + Grep through ~/.claude    | `glom search 'topic'` (ranked)        |
+| Which tools do agents use most | Parse JSONL manually             | `glom tools --names` (compact table)  |
+| Find sessions that used a tool | Grep for tool name in JSONL      | `glom tools 'Read'` (ranked)          |
+| Inspect a specific session     | `Read` a 100 KB+ JSONL           | `glom show <path>` (truncated panel)  |
+| Index statistics               | Count files manually             | `glom stats`                          |
 
-## Output format
+## Output
 
-All commands emit compact ASCII tables — lowercase headers, dash
-separators, no box-drawing, no ANSI. Flag availability varies by
-command — run `<cmd> --help` to confirm. General patterns:
+Compact ASCII tables — lowercase headers, dashes, no box-drawing, no ANSI.
+Patterns:
 
-- `--json` — structured JSON. Available on all commands.
-- `--limit N` — cap rows (`--limit 0` unlimited). Available on `search`
-  and `tools`.
-- `--full` — multi-line detail or untruncated content. Available on
-  `search`, `tools`, and `show`.
+- `--json` — structured JSON (all commands).
+- `--limit N` — cap rows (`0` = unlimited). On `search`, `tools`.
+- `--full` — multi-line detail or untruncated content. On `search`, `tools`,
+  `show`.
 
-Default limit is 10 for search, 20 for tool listings.
+Default limit: 10 search, 20 tools.
 
 ## Setup
 
 ```bash
-glom index    # walk ~/.claude and ~/.codex, build the FTS5 index (once)
+glom index    # walk ~/.claude and ~/.codex, build FTS5 (once)
 ```
 
-Re-run `glom index` periodically to pick up new sessions. It is
-incremental — only new files are indexed.
+Re-run periodically. Incremental — only new files indexed.
 
-## Search — find sessions by keyword
+## Search
 
 ```bash
-glom search 'bellman context'        # ranked by BM25 relevance
+glom search 'parser refactor'        # ranked by BM25
 glom search 'refactor parser'        # keyword fragments work
-glom search --limit 20 'deployment'  # more results
-glom search --full 'bellman'         # multi-line view with snippets
+glom search --limit 20 'deployment'
+glom search --full 'deployment'      # multi-line snippets
 ```
 
-Output uses the canonical search columns: `rank kind name location snippet`.
-Default limit is 10 results.
+Output columns: `rank kind name location snippet`.
 
-## Tools — discover tool-call patterns
+## Tools
 
 ```bash
 glom tools --names              # top 20 tools by call count
 glom tools --names --full       # all tools
-glom tools 'Read'               # search tool-call records for 'Read'
-glom tools 'Bash' --full        # expanded view of Bash tool calls
+glom tools 'Read'               # search tool-call records
+glom tools 'Bash' --full        # expanded view
 ```
 
-`tools --names` is useful for understanding which tools agents rely on
-most across all indexed sessions.
+`tools --names` reveals which tools agents rely on most across sessions.
 
-## Show — inspect one document
+## Show
 
 ```bash
-glom show <path>                # truncated to 4000 chars by default
-glom show <path> --full         # untruncated
-glom show <path> --json         # structured JSON, content truncated
-glom show <path> --json --full  # untruncated JSON
+glom show <path>                # truncated to 4000 chars
+glom show <path> --full
+glom show <path> --json
+glom show <path> --json --full
 ```
 
-Accepts full paths or path suffixes ending in `.jsonl`:
-`glom show eceef2cc-d2f7-4062-9d3b-d4ca4c3173bc.jsonl` resolves the full
-path. Bare UUIDs without the extension do not match.
+Accepts full paths or path suffixes ending in `.jsonl`. Bare UUIDs without
+extension do not match.
 
-## Stats — index health
+## Stats
 
 ```bash
 glom stats    # document counts by kind and source, total content size
 ```
 
-## Key principles
+## Principles
 
-- **Search before browsing.** `glom search X` finds relevant sessions
-  faster than manually navigating `~/.claude/projects/`.
+- **Search before browsing.** `glom search X` is faster than navigating
+  `~/.claude/projects/`.
 - **Use tool patterns for insight.** `glom tools --names` reveals which
-  tools dominate agent workflows. `glom tools 'Bash'` shows what
-  agents run most often.
-- **Re-index after long sessions.** New sessions are only searchable
-  after `glom index`.
+  tools dominate workflows.
+- **Re-index after long sessions.** New sessions are only searchable after
+  `glom index`.

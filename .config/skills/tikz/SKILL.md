@@ -4,53 +4,46 @@ description: "Writing TikZ diagrams in .tex files"
 
 # TikZ
 
-How to write compositional, publication-quality TikZ graphics.
+Compositional, publication-quality TikZ graphics.
 
 ## The mental model
 
 TikZ is a declarative graphics DSL embedded in TeX. Everything composes through
-one mechanism: **pgfkeys**, a hierarchical key-value system. A pgfkeys **style**
-is a named bundle of options that, when invoked, injects its options into the
-current parse. Styles are first-class functions over the option set.
+**pgfkeys**, a hierarchical key-value system. A pgfkeys *style* is a named
+bundle of options that injects its options into the current parse. Styles are
+first-class functions over the option set.
 
-The composition hierarchy, from coarsest to finest:
+Composition hierarchy, coarsest to finest:
 
 ```
 tikzpicture  →  scope  →  path/node/pic  →  style/option  →  pgfkey
 ```
 
-A **scope** groups options and graphics state inside a TeX group; everything
-inside the scope is local. A **style** bundles options for reuse. A **pic** is a
-named, parameterized chunk of TikZ code that executes in a fresh scope. A
-**node** is both a drawn shape and a named coordinate that persists across
-scopes. Draw a node, then wire to it by name from anywhere in the picture.
+A **scope** groups options inside a TeX group (locally scoped state). A
+**style** bundles options for reuse. A **pic** runs a named, parameterized
+chunk of TikZ in a fresh scope. A **node** is both a drawn shape and a named
+coordinate that persists across scopes.
 
 ## Foundational patterns
 
-### 1. Styles compose through application
+### Styles compose through application
 
 ```latex
-% These are equivalent — a style is code that injects more keys:
+% These are equivalent — a style is code that injects keys:
 foo/.style={draw, red}
 foo/.code={\pgfkeysalso{draw, red}}
-```
 
-Extend a style without replacing it:
-
-```latex
 \tikzset{my base/.style={draw, thick}}
-\tikzset{my base/.append style={red}}     % adds red, keeps draw+thick
+\tikzset{my base/.append style={red}}              % adds, keeps base
 \tikzset{my derived/.style={my base, fill=blue!20}}  % inherits everything
 ```
 
-`.append style` adds options to an existing style; `.prefix style` prepends
-them. Both leave the original intact. The @@-convention (Pattern 2) uses this to
-let users extend library styles without overwriting the base definition.
+`.append style` adds; `.prefix style` prepends. Both leave the original intact.
 
-### 2. The "every" pattern
+### The "every" pattern
 
 TikZ pre-declares empty styles at every processing stage. Filling one changes
-every instance of that category:
+every instance:
 
 ```latex
 every picture/.style={}    every scope/.style={}
@@ -58,30 +51,23 @@ every path/.style={}       every node/.style={}
 every edge/.style={draw}   every child/.style={}
 ```
 
-Libraries add domain-specific hooks: `every state`, `every concept`,
-`every entity`. Setting `every state/.style={fill=blue!20}` changes every
-automaton state in the picture.
+Libraries add domain hooks: `every state`, `every concept`, `every entity`.
 
-### 3. Nodes are visual elements and named coordinates
-
-A node draws a shape and registers a named coordinate with anchors (attachment
-points). Subsequent commands reference the node by name:
+### Nodes are visual elements and named coordinates
 
 ```latex
 \node[circle, draw] (A) at (0,0) {$\alpha$};
 \node[rectangle, draw] (B) at (3,0) {$\beta$};
-\draw[->] (A.east) -- (B.west);      % anchor-precise connection
+\draw[->] (A.east) -- (B.west);
 \draw[->] (A.north) to[bend left] (B.north);
 ```
 
-Anchors: `north`, `south`, `east`, `west`, compass combinations, `base` (text
-baseline), `mid` (x-height), angle-based (`A.45`), and shape-specific anchors
-for multi-part nodes.
+Anchors: `north`, `south`, `east`, `west`, compass combinations, `base`, `mid`,
+angle-based (`A.45`), shape-specific.
 
-### 4. Pics
+### Pics
 
-A pic executes a named chunk of TikZ code in a fresh scope at a given position.
-It exposes named coordinates that the caller references:
+A pic runs named TikZ code in a fresh scope, exposing named coordinates:
 
 ```latex
 \tikzset{
@@ -98,36 +84,31 @@ It exposes named coordinates that the caller references:
 }
 ```
 
-`pic actions` propagates the caller's draw/fill options into the pic body. Three
-code slots control layering: `background code`, `code`, `foreground code`.
+`pic actions` propagates the caller's draw/fill into the pic body. Three layer
+slots: `background code`, `code`, `foreground code`.
 
-### 5. Scopes isolate state
-
-A scope creates a TeX group. All `\def` assignments, style overrides, and
-clipping paths inside it vanish when it ends:
+### Scopes isolate state
 
 ```latex
 \begin{scope}[rotate=30, red, thick]
   \draw (0,0) -- (1,1);   % rotated, red, thick
 \end{scope}
-\draw (0,0) -- (1,1);     % unrotated, default color, default width
+\draw (0,0) -- (1,1);     % defaults restored
 ```
 
-The `scopes` library adds brace-based shorthand: `{[red] \draw ...;}`.
+The `scopes` library adds shorthand: `{[red] \draw ...;}`.
 
-### 6. Coordinate arithmetic
-
-The `calc` library enables arithmetic on coordinates:
+### Coordinate arithmetic (calc library)
 
 ```latex
-($(A)!0.5!(B)$)           % midpoint of A and B
+($(A)!0.5!(B)$)           % midpoint
 ($(A)!1cm!(B)$)           % 1cm from A toward B
 ($(A) + (1,0.5)$)         % vector addition
-($(A)!(P)!(B)$)           % projection of P onto line A--B
+($(A)!(P)!(B)$)           % projection of P onto A--B
 (A |- B)                  % x from A, y from B (perpendicular intersection)
 ```
 
-Named intersections via the `intersections` library:
+Named intersections (intersections library):
 
 ```latex
 \draw[name path=c1] (0,0) circle (1);
@@ -136,80 +117,55 @@ Named intersections via the `intersections` library:
   (P) circle (2pt) (Q) circle (2pt);
 ```
 
-### 7. foreach
+### foreach
 
 ```latex
-% Multiple variables with slash separation
 \foreach \x/\label in {0/a, 1/b, 2/c}
   \node at (\x, 0) {\label};
 
-% Computed values
 \foreach \x [evaluate=\x as \shade using \x*10] in {0,...,10}
   \node[fill=red!\shade!yellow] at (\x, 0) {\x};
 
-% State across iterations
 \foreach \x [remember=\x as \prev (initially A)] in {B,...,H}
   \draw (\prev) -- (\x);
 
-% Position tracking
 \foreach \x [count=\i from 0] in {a,...,e}
   \node at (\i, 0) {\x};
-
-% Nested (automatic body collection)
-\foreach \x in {0,...,3}
-  \foreach \y in {0,...,3}
-    \draw (\x, \y) circle (0.2);
 ```
 
 ## Design patterns from the masters
 
-### Pattern 1: Define / Get / Draw separation (tkz-euclide)
+### 1. Define / Get / Draw separation (tkz-euclide)
 
-Separate computation from rendering:
-
-- **Define** — compute coordinates with no visual side effects
-- **Get** — bind anonymous results to named handles
-- **Draw** — render already-defined objects
+Compute coordinates, name them, then render:
 
 ```latex
-\tkzDefPoint(0,0){A}              % define
+\tkzDefPoint(0,0){A}
 \tkzDefPoint(5,2){B}
 \tkzInterCC(A,B)(B,A)             % compute intersections
-\tkzGetPoints{C}{D}               % bind results to names
-\tkzDrawCircles(A,B B,A)          % render
+\tkzGetPoints{C}{D}               % bind to names
+\tkzDrawCircles(A,B B,A)
 \tkzDrawPolygon(A,B,C)
 ```
 
-The define layer wraps computations in `\pgfinterruptboundingbox` so
-construction geometry doesn't affect the output size. Points are the only
-persistent objects. Circles, lines, and polygons are derived from points at draw
-time.
+The define layer wraps in `\pgfinterruptboundingbox` so construction geometry
+does not affect output size.
 
-Computations deposit results into well-known registers (`tkzPointResult`,
-`tkzFirstPointResult`, `\tkzLengthResult`). `\tkzGetPoint{X}` aliases the
-register to a chosen name. Each computation writes to a fixed register; the
-caller decides the name.
-
-### Pattern 2: The @@-convention for safe extension (tikz-feynman)
-
-Every domain concept uses a three-part key structure:
+### 2. The @@-convention for safe extension (tikz-feynman)
 
 ```latex
 every dot@@/.style={...}    % (a) internal implementation
 every dot/.style={           % (b) user customization hook
   /tikzfeynman/every dot@@/.append style={#1}
 }
-dot/.style={                 % (c) activation key (what users write)
+dot/.style={                 % (c) activation key
   /tikzfeynman/every dot@@
 }
 ```
 
-`\tikzfeynmanset{every dot={red}}` appends red to the base `@@` definition
-without replacing it.
+`\tikzfeynmanset{every dot={red}}` appends red without replacing the base.
 
-### Pattern 3: Namespace with search fallthrough
-
-Create a dedicated key family. Unresolved keys fall through to TikZ:
+### 3. Namespace with search fallthrough
 
 ```latex
 \pgfkeys{
@@ -218,21 +174,16 @@ Create a dedicated key family. Unresolved keys fall through to TikZ:
 }
 ```
 
-Inside the DSL environment, domain keys (`fermion`, `boson`, `dot`) and TikZ
-keys (`draw`, `red`, `thick`) coexist. `.search also` tries unresolved keys
-against `/tikz`. tikzlings chains four levels:
+Inside the DSL environment, domain keys (`fermion`, `boson`) and TikZ keys
+(`draw`, `red`) coexist. tikzlings chains four levels:
 `/bear/.search also={/tikz, /pgf, /thing}`.
 
-### Pattern 4: draw=none + postaction for visual stacking (tikz-feynman)
-
-A **postaction** executes after the path geometry is computed. Suppress the
-default draw, then render as a postaction:
+### 4. draw=none + postaction for visual stacking
 
 ```latex
 every boson@@/.style={
-  draw=none,                    % suppress default rendering
-  decoration={name=none},
-  postaction={                  % render AFTER path geometry is computed
+  draw=none,
+  postaction={
     draw,
     decoration={complete sines, amplitude=1mm, segment length=2mm},
     decorate=true,
@@ -241,81 +192,56 @@ every boson@@/.style={
 ```
 
 Multiple postactions on the same path compose independently. Charged particles
-inherit the base boson style and add an arrow postaction on top.
+inherit the boson style and add an arrow postaction on top.
 
-### Pattern 5: The cube/block pic for 3D layer diagrams (PetarV-)
-
-A `pic` that draws a 3D rectangular prism. Each face is drawn inside its own
-`\clip` scope to prevent fill from bleeding past face boundaries. Named anchors
-(`-A`, `-B`) allow inter-layer wiring:
+### 5. The cube/block pic for 3D layer diagrams (PetarV-)
 
 ```latex
 \tikzset{pics/cube/.style args={#1/#2/#3/#4}{code={
   \begin{scope}[line width=#4mm]
-    % Front face: clip boundary, then fill
-    \begin{scope}
+    \begin{scope}                   % per-face clip prevents fill bleed
       \clip (-#1,-#2,0) -- (#1,-#2,0) -- (#1,#2,0) -- (-#1,#2,0) -- cycle;
       \filldraw (-#1,-#2,0) -- (#1,-#2,0) -- (#1,#2,0) -- (-#1,#2,0) -- cycle;
     \end{scope}
-    % Top face, left face (similar)
-    ...
-    % Named anchors for inter-layer wiring
+    % Top face, left face similar.
     \node[inner sep=0] (-A) at (-#1-#3*0.5, 0, -#3*0.5) {};
     \node[inner sep=0] (-B) at (#1-#3*0.5, 0, -#3*0.5) {};
   \end{scope}
 }}}
 ```
 
-Varying the four parameters encodes architecture: shrinking width/height (1.8 ->
-0.9 -> 0.45) with growing depth (1 -> 2 -> 6) represents spatial reduction and
-channel growth in a CNN.
+Varying parameters encodes architecture (e.g. CNN: shrinking width/height with
+growing depth).
 
-### Pattern 6: Style inheritance for type hierarchies (tikz-bayesnet)
-
-Derived styles override only the properties that differ from the base:
+### 6. Style inheritance for type hierarchies (tikz-bayesnet)
 
 ```latex
 \tikzstyle{latent} = [circle, fill=white, draw=black, minimum size=20pt]
-\tikzstyle{obs}    = [latent, fill=gray!25]     % override fill only
-\tikzstyle{det}    = [latent, diamond]           % override shape only
-\tikzstyle{const}  = [rectangle, inner sep=0pt]  % different base entirely
-```
+\tikzstyle{obs}    = [latent, fill=gray!25]      % override fill
+\tikzstyle{det}    = [latent, diamond]            % override shape
+\tikzstyle{const}  = [rectangle, inner sep=0pt]   % different base
 
-**Plates** (labeled bounding boxes) compose via the `fit` library, which
-auto-sizes a node to enclose a set of other nodes:
-
-```latex
+% Plates compose via the fit library:
 \newcommand{\plate}[4][]{
-  \node[wrap=#3] (#2-wrap) {};           % measure interior
-  \node[plate caption=#2-wrap] (#2-cap) {#4};  % place label
-  \node[plate=(#2-wrap)(#2-cap), #1] (#2) {};  % draw boundary fitting both
+  \node[wrap=#3] (#2-wrap) {};
+  \node[plate caption=#2-wrap] (#2-cap) {#4};
+  \node[plate=(#2-wrap)(#2-cap), #1] (#2) {};
 }
 ```
 
-Plates nest: the outer plate fits the inner plate node like any other node.
-
-### Pattern 7: Parameterized custom commands (janosh, walmes)
-
-`\newcommand` macros stamp out repeated substructure:
+### 7. Parameterized custom commands
 
 ```latex
-% Neural network: orthogonal composition commands
 \newcommand\drawNodes[2]{
   \foreach \neurons [count=\lyrIdx] in #2 {
     \foreach \n [count=\nIdx] in \neurons
       \node[neuron] (#1-\lyrIdx-\nIdx) at (...) {\n};
   }
 }
-\newcommand\denselyConnectNodes[2]{...}
-\newcommand\connectSomeNodes[2]{...}
 ```
 
-The `#1` namespace parameter allows multiple independent networks in one
-tikzpicture. Three orthogonal commands (place, connect-all, connect-selectively)
-compose to build both a fully-connected net and a masked autoencoder from the
-same primitives.
-
-A command that returns a small tikzpicture can be placed as node content:
+`#1` namespaces nodes so multiple networks coexist in one tikzpicture. A
+command returning a small tikzpicture can be a node's content:
 
 ```latex
 \newcommand{\distro}[3]{
@@ -325,44 +251,32 @@ A command that returns a small tikzpicture can be placed as node content:
   \end{tikzpicture}
 }
 \node at (0,0) {\distro{1}{0}{0}};
-\node at (3,0) {\distro{0.5}{0.8}{0.3}};
 ```
 
-### Pattern 8: Natural-language key-value arguments (tkz-euclide)
-
-`.code args` embeds English prepositions in the pattern-matching syntax:
+### 8. Natural-language key-value arguments (tkz-euclide)
 
 ```latex
 \pgfkeys{/tkzDefPointBy/.cd,
   translation/.code args  = {from #1 to #2}{...},
   rotation/.code args     = {center #1 angle #2}{...},
   reflection/.code args   = {over #1--#2}{...},
-  projection/.code args   = {onto #1--#2}{...},
-  homothety/.code args    = {center #1 ratio #2}{...},
 }
-```
 
-Usage reads like a construction procedure:
-
-```latex
 \tkzDefPointBy[rotation=center B angle 36](C)
 \tkzDefPointBy[reflection=over A--B](M)
 ```
 
-### Pattern 9: White-underlay for edge crossing (PetarV-)
-
-Draw a thick white line first, then the actual edge on top. The white line
-erases the crossing point, creating a visual bridge:
+### 9. White-underlay for edge crossing (PetarV-)
 
 ```latex
 \path[-stealth, ultra thick, white] (X1) edge[bend left=45] (R22);
 \path[-stealth, thick]              (X1) edge[bend left=45] (R22);
 ```
 
-### Pattern 10: declare function + pgfplots (walmes)
+The white line erases the crossing point; the colored line draws a visual
+bridge.
 
-`declare function` defines mathematical functions at the TikZ level. Functions
-compose (`betapdf` calls `gamma`):
+### 10. declare function + pgfplots (walmes)
 
 ```latex
 \begin{tikzpicture}[
@@ -377,66 +291,42 @@ compose (`betapdf` calls `gamma`):
 
 Then `\addplot[smooth, thick] {normalpdf(x, 0, 1)};` inside a pgfplots axis.
 
-## Building a domain-specific TikZ library
+## Building a domain library
 
-Five steps, generalized from tikz-feynman, tikz-bayesnet, automata, mindmap, and
-tkz-euclide:
-
-### Step 1: Create a key family with fallthrough
+Five steps from tikz-feynman, tikz-bayesnet, automata, mindmap, tkz-euclide:
 
 ```latex
+% 1. Key family with fallthrough
 \pgfkeys{
   /mydomain/.is family,
   /mydomain/.search also={/tikz},
 }
 \def\mydomainset{\pgfqkeys{/mydomain}}
-```
 
-### Step 2: Define domain vocabulary as styles
-
-Use the @@-convention for each concept:
-
-```latex
+% 2. Vocabulary as styles via the @@-convention
 \mydomainset{
   every widget@@/.style={draw, circle, minimum size=1cm},
   every widget/.style={/mydomain/every widget@@/.append style={#1}},
   widget/.style={/mydomain/every widget@@},
 }
-```
 
-### Step 3: Wire key routing in the environment
-
-Inside your environment, install an `.unknown` handler that tries your family:
-
-```latex
+% 3. Environment with key routing
 \newenvironment{mydomain}[1][]{%
   \begin{scope}%
   \pgfkeys{/tikz/.unknown/.code={%
     \pgfkeys{/mydomain/\pgfkeyscurrentname/.try={##1}}%
   }}%
   \mydomainset{#1}%
-}{%
-  \end{scope}%
-}
-```
+}{\end{scope}}
 
-### Step 4: Define compound commands that compose primitives
-
-```latex
+% 4. Compound commands
 \newcommand{\edge}[3][]{%
   \foreach \x in {#2} {
-    \foreach \y in {#3} {
-      \path (\x) edge [->, #1] (\y);
-    };
+    \foreach \y in {#3} {\path (\x) edge [->, #1] (\y);};
   };
 }
-```
 
-### Step 5: Expose "every" hooks for user customization
-
-Users modify appearance globally without touching the library:
-
-```latex
+% 5. User-facing "every" hooks
 \mydomainset{every widget={fill=blue!20}}
 ```
 
@@ -444,28 +334,19 @@ Users modify appearance globally without touching the library:
 
 ### 3D rendering
 
-**Strategy A: tikz-3dplot.** Set viewing angles once; all coordinates
-participate in the projection:
-
 ```latex
+% A. tikz-3dplot (set angles once, all coords project)
 \tdplotsetmaincoords{75}{50}
 \begin{tikzpicture}[tdplot_main_coords]
   \tdplotsetcoord{P}{\rvec}{\thetavec}{\phivec}
-  % auto-generates P, Px, Py, Pz, Pxy projections
-```
 
-**Strategy B: oblique custom axes.** Simpler; good for isometric views:
-
-```latex
+% B. Oblique custom axes (simpler isometric)
 \begin{tikzpicture}[x=(-15:0.9), y=(90:0.9), z=(-150:1.1)]
+
+% C. Clip-then-fill — draw faces in painter's order, each in its own \clip
 ```
 
-**Strategy C: clip-then-fill.** Draw faces in painter's order, each inside its
-own `\clip` scope to prevent fill from bleeding past face boundaries.
-
-### Graph drawing (LuaTeX only)
-
-Declare graph structure; let a layout algorithm compute positions:
+### Graph drawing (LuaTeX)
 
 ```latex
 \usetikzlibrary{graphs, graphdrawing}
@@ -474,21 +355,14 @@ Declare graph structure; let a layout algorithm compute positions:
 \graph[tree layout, sibling distance=8mm] {
   a -> { b, c -> { d, e } }
 };
-```
 
-Sublayouts apply different algorithms to subgraphs:
-
-```latex
-\graph[spring layout] {
-  // [tree layout] { a -> {b, c} };  % inner: tree
-  // [tree layout] { 1 -> 2 };       % inner: tree
-  a -> 1;                             % outer: force-directed
+\graph[spring layout] {              % sublayouts
+  // [tree layout] { a -> {b, c} };
+  a -> 1;
 };
 ```
 
 ### Decoration markings
-
-Place arbitrary content at parametric positions along a path:
 
 ```latex
 \draw[postaction={decorate, decoration={markings,
@@ -504,11 +378,8 @@ Place arbitrary content at parametric positions along a path:
   a & b & c \\
   d & e & f \\
 };
-\draw[->] (M-1-1) -- (M-1-2);     % reference by (name-row-col)
+\draw[->] (M-1-1) -- (M-1-2);     % name-row-col
 ```
-
-Style individual cells inline (`|[red]| x`) or by position
-(`row 2 column 3/.style=red`).
 
 ### Chains
 
@@ -521,26 +392,14 @@ Style individual cells inline (`|[red]| x`) or by position
 \end{tikzpicture}
 ```
 
-Nodes auto-name as `chain-1`, `chain-2`, etc. `join` draws edges between
-consecutive nodes.
-
 ### Panel composition
 
-Multiple sub-diagrams in one tikzpicture via shifted scopes:
-
 ```latex
-\begin{scope}[shift={(0,0)}]
-  ...first panel...
-\end{scope}
-\begin{scope}[shift={(7,0)}]
-  ...second panel...
-\end{scope}
+\begin{scope}[shift={(0,0)}]    ...first panel...    \end{scope}
+\begin{scope}[shift={(7,0)}]    ...second panel...   \end{scope}
 ```
 
-### Saveboxes
-
-Avoid nested tikzpictures (which are generally broken) by pre-rendering into
-saveboxes:
+### Saveboxes (avoid nested tikzpictures)
 
 ```latex
 \newsavebox\mybox
@@ -554,25 +413,18 @@ saveboxes:
 
 ### Semantic edge types
 
-Assign decorations to semantic categories:
-
 ```latex
-% Deterministic connection
-\draw[-stealth, thick] (A) -- (B);
-
-% Stochastic / lateral connection
+\draw[-stealth, thick] (A) -- (B);                                  % deterministic
 \draw[-stealth, thick, decoration={snake, segment length=2mm,
-  amplitude=0.3mm, post length=1.5mm}, decorate] (A) -- (B);
-
-% Attention head
+  amplitude=0.3mm, post length=1.5mm}, decorate] (A) -- (B);        % stochastic
 \draw[-stealth, thick, decoration={zigzag, segment length=2mm,
-  amplitude=0.3mm, post length=1.5mm}, decorate] (A) -- (B);
+  amplitude=0.3mm, post length=1.5mm}, decorate] (A) -- (B);        % attention
 ```
 
-Offset anchors prevent parallel edges from overlapping: `(A.120) -- (B.-30)`,
-`(A.135) -- (B.-45)`, `(A.150) -- (B.-60)`.
+Offset anchors prevent parallel edges from overlapping:
+`(A.120) -- (B.-30)`, `(A.135) -- (B.-45)`.
 
-## Standalone document pattern
+## Standalone document
 
 ```latex
 \documentclass[crop, tikz]{standalone}
@@ -585,10 +437,8 @@ Offset anchors prevent parallel edges from overlapping: `(A.120) -- (B.-30)`,
 \end{document}
 ```
 
-`[crop, tikz]` produces a tightly cropped output with no page margins. Each
-figure loads only the libraries it uses. Total independence in exchange for
-minor duplication. For gallery projects, pair each `.tex` with a `.yml` sidecar
-(title, tags, description, attribution).
+`[crop, tikz]` produces tightly cropped output. For galleries, pair each `.tex`
+with a `.yml` sidecar (title, tags, attribution).
 
 ## Transformation ordering
 
@@ -597,40 +447,35 @@ minor duplication. For gallery projects, pair each `.tex` with a `.yml` sidecar
 \draw[xshift=2cm, rotate=30] ...  % shift first, then rotate (different!)
 ```
 
-**Coordinate transformations** affect only coordinates. **Canvas
-transformations** (`transform canvas={scale=2}`) also scale line widths and
-text, which is rarely what you want. Use `transform shape` to opt nodes into
-coordinate transforms.
+**Coordinate** transformations affect coordinates only. **Canvas**
+transformations (`transform canvas={scale=2}`) also scale line widths and text
+— rarely what you want.
 
 ## Specialized techniques
 
 ### Two-pass rendering for 3D occlusion
 
-TikZ has no z-buffer. Instead, draw in two passes with toggle flags:
+TikZ has no z-buffer. Use toggles to selectively redraw front faces:
 
 ```latex
-\newtoggle{redraw}   % controls whether left face is drawn
-\newtoggle{redraw2}  % controls whether top face is drawn
+\newtoggle{redraw}
+\newtoggle{redraw2}
 
-% Pass 1: draw all cubes with all faces, then all arrows
+% Pass 1: full cubes + arrows
 \togglefalse{redraw} \togglefalse{redraw2}
 \pic[fill=blue!30] (A) {cube={1.8/1.8/1/1}};
 \pic[fill=red!30]  (B) {cube={0.9/0.9/2/1}};
-\draw[-stealth, thick] (A-B) -- (B-A);   % arrow between layers
+\draw[-stealth, thick] (A-B) -- (B-A);
 
-% Pass 2: redraw front faces only (occludes arrows behind blocks)
+% Pass 2: redraw front faces only — covers arrows passing behind
 \toggletrue{redraw} \toggletrue{redraw2}
 \pic[fill=blue!30] (A) {cube={1.8/1.8/1/1}};
 \pic[fill=red!30]  (B) {cube={0.9/0.9/2/1}};
 ```
 
-Pass 2 skips the left and top faces (controlled by toggle flags inside the cube
-pic definition), so only the front face redraws — covering arrows that should
-appear behind the block.
-
 ### path picture
 
-`path picture` executes drawing code clipped to a node's shape boundary:
+Drawing code clipped to a node's shape:
 
 ```latex
 \tikzset{
@@ -644,23 +489,19 @@ appear behind the block.
 
 ### local bounding box
 
-`local bounding box` names the bounding box of a scope, turning it into a node
-that other scopes can reference for positioning:
+Names a scope's bounding box as a node for cross-scope positioning:
 
 ```latex
 \begin{scope}[local bounding box=encoder]
-  ... draw encoder diagram ...
+  ...
 \end{scope}
 \begin{scope}[shift={($(encoder.east)+(2,0)$)}, local bounding box=decoder]
-  ... draw decoder diagram ...
+  ...
 \end{scope}
 \draw[->] (encoder.east) -- (decoder.west);
 ```
 
 ### Bounding box isolation
-
-`\pgfinterruptboundingbox` prevents invisible construction geometry from
-affecting the output size:
 
 ```latex
 \pgfinterruptboundingbox
@@ -668,12 +509,7 @@ affecting the output size:
 \endpgfinterruptboundingbox
 ```
 
-tkz-euclide wraps every `\tkzDef*` command this way. The construction graph is
-invisible; only `\tkzDraw*` commands contribute to the bounding box.
-
 ### Rendering mode switch via macro redefinition
-
-Redefine a drawing primitive based on options to switch rendering modes:
 
 ```latex
 \ifbear@threeD
@@ -681,37 +517,23 @@ Redefine a drawing primitive based on options to switch rendering modes:
 \else
   \def\bear@part@draw[##1]{\fill[##1]}
 \fi
-% Every body part uses \bear@part@draw[\bear@body]
+% Every body part calls \bear@part@draw[\bear@body]
 ```
 
-Every body part calls `\bear@part@draw[\bear@body]`. The entire animal switches
-between flat fill, ball-color shading, or contour outline without changing any
-body-part code.
+The whole figure switches rendering mode without touching part code.
 
-### Domain synonyms via \let aliases
-
-`\let` creates a zero-cost alias:
+### Domain synonyms via \let
 
 ```latex
 \let\tkzNinePointCenter\tkzEulerCenter
 \let\tkzLemoinePoint\tkzSymmedianCenter
-\let\tkzBaryCenter\tkzCentroid
-```
 
-In key-value options, map multiple keys to the same dispatch target:
-
-```latex
+% Or in keys, dispatch multiple keys to the same target:
 euler/.code = \def\tkz@numtc{5},
-nine/.code  = \def\tkz@numtc{5},   % same target
+nine/.code  = \def\tkz@numtc{5},
 ```
-
-The DSL speaks the language of different mathematical traditions (Euler center =
-nine-point center, Lemoine point = Grebe point) without code duplication.
 
 ### after node path
-
-`after node path` executes code after a node is placed. `##1` refers to the node
-just created. The automata library uses this to draw initial-state arrows:
 
 ```latex
 \tikzset{
@@ -721,92 +543,57 @@ just created. The automata library uses this to draw initial-state arrows:
 }
 ```
 
-The chains library uses the same hook to draw `join` edges.
+`##1` refers to the just-placed node. The chains library uses the same hook for
+`join` edges.
 
 ### Oblique projection
-
-`\pgftransformcm` applies an affine transformation matrix. Use it for
-multiplexed/stacked layers:
 
 ```latex
 \newcommand{\myProjection}[2]{
   \pgftransformcm{1}{0}{0.4}{0.5}{\pgfpoint{#1cm}{#2cm}}
 }
-\begin{scope}
-  \myProjection{0}{0}
-  ... draw layer 1 ...
-\end{scope}
-\begin{scope}
-  \myProjection{0}{3}
-  ... draw layer 2 ...
-\end{scope}
-% Interlayer connections: use \pgftransformreset inside scope
+\begin{scope} \myProjection{0}{0}  ... \end{scope}
+\begin{scope} \myProjection{0}{3}  ... \end{scope}
+% Interlayer connections: \pgftransformreset inside scope
 ```
-
-Each layer draws in its own skewed coordinate system. Interlayer connections
-call `\pgftransformreset` inside their scope to draw in screen space.
-
-## Common mistakes
-
-- `transform canvas={scale=2}` doubles line widths and text. You probably want
-  `scale=2`, which affects only coordinates.
-- Nodes must be declared before referenced by name. You can't draw an arrow to
-  `(B)` if `(B)` hasn't been placed yet.
-- Without `pic actions` in a pic definition, `\pic[fill=red]{...}` has no effect
-  on the pic body.
-- Nested tikzpictures are broken. Use scopes, pics, or saveboxes.
-- `\tikzstyle` is deprecated. Use `\tikzset{name/.style={...}}`.
 
 ## References
 
 ### Manual
 
-- [PGF/TikZ Manual](https://tikz.dev/) — the complete online reference; the
+- [PGF/TikZ Manual](https://tikz.dev/) — complete reference.
   [pics](https://tikz.dev/tikz-pics), [scopes](https://tikz.dev/tikz-scopes),
-  [foreach](https://tikz.dev/pgffor), and
-  [graph drawing](https://tikz.dev/gd-usage-tikz) chapters are the most relevant
-  to compositional work
+  [foreach](https://tikz.dev/pgffor),
+  [graph drawing](https://tikz.dev/gd-usage-tikz) are the most relevant
+  chapters.
 
 ### Repositories studied
 
-- [al-ma-dev/tkz-euclide](https://github.com/al-ma-dev/tkz-euclide) — Alain
-  Matthes' Euclidean geometry DSL; the Define/Get/Draw separation and
-  natural-language key-value patterns originate here
-- [JP-Ellis/tikz-feynman](https://github.com/JP-Ellis/tikz-feynman) — Feynman
-  diagram DSL; source of the @@-convention, postaction stacking, and namespace
-  fallthrough patterns
-- [PetarV-/TikZ](https://github.com/PetarV-/TikZ) — 60 publication-ready ML
-  architecture figures; source of the cube pic, two-pass occlusion, and
-  white-underlay patterns
-- [janosh/tikz](https://github.com/janosh/tikz) — 137 standalone physics/ML
-  figures with YML sidecar metadata; source of the parameterized command and
-  standalone document patterns
-- [jluttine/tikz-bayesnet](https://github.com/jluttine/tikz-bayesnet) — Bayesian
-  network DSL; source of the style-inheritance hierarchy and fit-based plate
-  patterns
-- [samcarter/tikzlings](https://github.com/samcarter/tikzlings) — composable
-  character figures; source of the rendering mode switch and search-also
-  fallthrough chain patterns
+- [al-ma-dev/tkz-euclide](https://github.com/al-ma-dev/tkz-euclide) — Define/Get/Draw,
+  natural-language key-value
+- [JP-Ellis/tikz-feynman](https://github.com/JP-Ellis/tikz-feynman) —
+  @@-convention, postaction stacking, namespace fallthrough
+- [PetarV-/TikZ](https://github.com/PetarV-/TikZ) — cube pic, two-pass
+  occlusion, white-underlay
+- [janosh/tikz](https://github.com/janosh/tikz) — parameterized commands,
+  standalone+YML sidecar
+- [jluttine/tikz-bayesnet](https://github.com/jluttine/tikz-bayesnet) — style
+  inheritance, fit-based plates
+- [samcarter/tikzlings](https://github.com/samcarter/tikzlings) — rendering
+  mode switch, search-also chains
 - [HarisIqbal88/PlotNeuralNet](https://github.com/HarisIqbal88/PlotNeuralNet) —
-  3D neural network diagrams with Python generation pipeline
-- [IzaakWN/CodeSnippets](https://github.com/IzaakWN/CodeSnippets) — Izaak
-  Neutelings' particle physics TikZ; tikz-3dplot and oblique projection
-  techniques
-- [walmes/Tikz](https://github.com/walmes/Tikz) — 298 statistics teaching
-  figures; declare function composition and pgfplots patterns
+  3D NN diagrams with Python pipeline
+- [IzaakWN/CodeSnippets](https://github.com/IzaakWN/CodeSnippets) — 3dplot,
+  oblique projection
+- [walmes/Tikz](https://github.com/walmes/Tikz) — 298 statistics figures;
+  declare function, pgfplots
 - [f0nzie/tikz_favorites](https://github.com/f0nzie/tikz_favorites) — 257
-  curated examples; path picture, savebox, and Kalman filter matrix patterns
-- [pgf-tikz/pgf](https://github.com/pgf-tikz/pgf) — the PGF/TikZ source; pgfkeys
-  internals, library extension architecture, graph drawing Lua bridge
+  examples; path picture, savebox
+- [pgf-tikz/pgf](https://github.com/pgf-tikz/pgf) — pgfkeys internals, library
+  architecture, gd Lua bridge
 
-### Books
+### Books and galleries
 
-- Stefan Kottwitz, _LaTeX Graphics with TikZ_ (Packt, 2023) — practical guide by
-  the maintainer of TikZ.net, TeXample.net, and PGFplots.net
-
-### Galleries
-
-- [TikZ.net](https://tikz.net/) — physics-focused gallery by Izaak Neutelings
-- [TeXample.net](https://texample.net/) — the original TikZ example gallery
-- [TeX.SE: Nice scientific pictures show off](https://tex.stackexchange.com/questions/158668/nice-scientific-pictures-show-off)
-  — community showcase with source code
+- Kottwitz, _LaTeX Graphics with TikZ_ (Packt, 2023)
+- [TikZ.net](https://tikz.net/), [TeXample.net](https://texample.net/),
+  [TeX.SE Nice scientific pictures](https://tex.stackexchange.com/questions/158668/nice-scientific-pictures-show-off)
